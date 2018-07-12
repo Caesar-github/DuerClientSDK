@@ -119,7 +119,7 @@ struct alexa_key support_keys [] = {
     {KEY_MODE/*WAKEUP*/, 0, 1,  enter_wakeup_mode,},
     {KEY_MODE/*WIFI_MODE*/, 1, 1, enter_wifi_mode},
     {KEY_PLAY/*PLAY/PAUSE*/, 0, 1, enter_play_pause},
-    {KEY_PLAY/*BT_MODE*/, 1, 1, enter_bt_mode},
+    //{KEY_PLAY/*BT_MODE*/, 1, 1, enter_bt_mode},
     //{KEY_PLAY/*WAKEUP*/, 0, 1,  enter_wakeup_mode,},
     //{KEY_PLAY/*WIFI_MODE*/, 1, 1, enter_wifi_mode},
     {KEY_VOLUMEDOWN/*VOL_DOWN*/, 0, 1, volume_step_down},
