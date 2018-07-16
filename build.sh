@@ -74,7 +74,7 @@ generate_output() {
          cp -r ${WORK_PATH}/DCSApp/src/Vendor/Sengled/sai_config ${OUTPUT_PATH}
     fi
     if [ "${Platform}" = "Ingenic" ]; then
-         cp -r ${WORK_PATH}/DCSApp/src/Vendor/ingenic/lib/*  ${OUTPUT_PATH}/lib
+         cp -r ${WORK_PATH}/DCSApp/src/Vendor/Ingenic/lib/*  ${OUTPUT_PATH}/lib
     fi
 }
 

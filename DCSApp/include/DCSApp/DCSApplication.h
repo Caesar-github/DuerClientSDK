@@ -68,6 +68,8 @@ public:
 
     static void enterWakeupMode();
 
+    static bool recordingStatus();
+
 private:
     /**
      * \if english

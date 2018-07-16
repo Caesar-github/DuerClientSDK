@@ -349,6 +349,8 @@ public:
 
     static void enterWakeupMode();
 
+    static bool recordingStatus();
+
 #ifdef KITTAI_KEY_WORD_DETECTOR
     /**
      * \if english

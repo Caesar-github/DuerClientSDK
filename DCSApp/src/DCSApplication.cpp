@@ -415,5 +415,14 @@ void DCSApplication::enterWakeupMode() {
     duerOSDcsSDK::sdkInterfaces::DcsSdk::enterWakeupMode();
 }
 
+bool DCSApplication::recordingStatus() {
+// arm32 libdcssdk.so has no recordingStatus
+#ifdef __aarch64__
+    return duerOSDcsSDK::sdkInterfaces::DcsSdk::recordingStatus();
+#else
+	return false;
+#endif
+}
+
 }  // namespace application
 }  // namespace duerOSDcsApp

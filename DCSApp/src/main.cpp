@@ -41,7 +41,7 @@
 #endif
 pthread_mutex_t mylock=PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t mycond=PTHREAD_COND_INITIALIZER;
-const unsigned int voice_inactive_max_count = 16000 * 5; //16k, 3 seconds
+const unsigned int voice_inactive_max_count = 16000 * 3; //16k, 3 seconds
 
 unsigned int read_voice_inactive_frames(void)
 {
@@ -114,7 +114,10 @@ void *vad_detect_func(void* arg) {
             //enter sleep mode
             duerOSDcsApp::application::DCSApplication::enterSleepMode();
             //......
-            wait_device_mode_timeout_ms(3000);
+            while (!duerOSDcsApp::application::DCSApplication::recordingStatus()) {
+                //wait_device_mode_timeout_ms(10);
+                usleep(1000*10);
+            }
             printf("pause >>>>\n");
             system("echo 0 > /sys/module/snd_soc_rockchip_vad/parameters/voice_inactive_frames");
             system("echo mem > /sys/power/state");
