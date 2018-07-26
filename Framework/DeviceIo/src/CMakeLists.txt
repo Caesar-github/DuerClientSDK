@@ -253,11 +253,12 @@ else()
     add_library(DeviceIo SHARED
                 linux/InfoLed.cpp
                 linux/DeviceIo.cpp)
-    target_link_libraries(DeviceIo wpa_client)
+    target_link_libraries(DeviceIo wpa_client SocketApp)
 endif()
 
 target_include_directories(DeviceIo PUBLIC
         "${DeviceIo_SOURCE_DIR}/include"
+        "${SocketApp_SOURCE_DIR}/include"
         "${LoggerUtils_SOURCE_DIR}/include")
 
 # install target
