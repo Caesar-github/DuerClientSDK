@@ -18,8 +18,10 @@
 
 #include <unistd.h>
 #include <cmath>
+#include <pthread.h>
 #include <LoggerUtils/DcsSdkLogger.h>
 #include "alsa/asoundlib.h"
+#include "socket_app.h"
 
 #include <wpa_ctrl.h>
 
@@ -45,6 +47,108 @@ typedef struct {
 // static snd_mixer_elem_t* mixer_elem = nullptr;
 static user_volume_t    user_volume = {0, false};
 static pthread_mutex_t  user_volume_mutex;
+
+/* as same as APP_BLE_WIFI_INTRODUCER_GATT_ATTRIBUTE_SIZE */
+#define BLE_SOCKET_RECV_LEN 22
+static pthread_t tid = 0;
+static int socket_recv_done = 0;
+static tSOCKET_APP socket_app;
+static char sock_path[]="/data/bsa/config/socket_dueros";
+
+static int ble_socket_send(void *data, int len) {
+/*
+    printf("ble_socket_send, len: %d", len);
+    for(int i = 0; i < len; i++)
+        printf("%02x ", ((char*)data)[i]);
+    printf("\n\n");
+*/
+    return socket_send(socket_app.client_sockfd, (char*) data, len);
+}
+
+static void *ble_socket_recieve(void *arg) {
+    char data[BLE_SOCKET_RECV_LEN];
+    int bytes = 0;
+
+    APP_DEBUG("ble_socket_recieve\n");
+
+    if (-1 == system("mkdir -p /data/bsa/config")) {
+        APP_ERROR("mkdir /data/bsa/config failed\n");
+        goto exit;
+    }
+
+    strcpy(socket_app.sock_path, sock_path);
+    if ((setup_socket_server(&socket_app)) < 0) {
+        goto exit;
+    }
+
+    if (accpet_client(&socket_app) < 0) {
+        goto exit;
+    }
+
+    APP_DEBUG("Client connected\n");
+
+    while (socket_recv_done) {
+        memset(data, 0, sizeof(data));
+        bytes = socket_recieve(socket_app.client_sockfd, data, sizeof(data));
+        if (bytes <= 0) {
+            APP_DEBUG("Client leaved, break\n");
+            break;
+        }
+/*
+        printf("ble_socket_recieve, bytes: %d", bytes);
+        for(int i = 0; i < bytes; i++)
+            printf("%02x ", (data)[i]);
+        printf("\n\n");
+*/
+        DeviceIo::getInstance()->getNotify()->callback(DeviceInput::BLE_SERVER_RECV, data, bytes);
+    }
+
+exit:
+    APP_DEBUG("Exit socket recv thread\n");
+    pthread_exit(0);
+}
+
+static int ble_socket_thread_create(void) {
+    if(!socket_recv_done) {
+        socket_recv_done = 1;
+        if (pthread_create(&tid, NULL, ble_socket_recieve, NULL)) {
+            APP_ERROR("Create bsa ble pthread failed\n");
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+static void ble_socket_thread_delete(void) {
+    if(socket_recv_done) {
+        socket_recv_done = 0;
+        if (tid) {
+            pthread_join(tid, NULL);
+            tid = 0;
+        }
+    }
+}
+
+static int ble_wifi_introducer_server_open(void) {
+    if (-1 == system("bsa_ble_wifi_introducer.sh start")) {
+        APP_ERROR("Start bsa ble failed\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int ble_wifi_introducer_server_close(void) {
+    teardown_socket_server(&socket_app);
+
+    if (-1 == system("bsa_ble_wifi_introducer.sh stop")) {
+        APP_DEBUG("Stop bsa ble failed\n");
+        return -1;
+    }
+
+    return 0;
+}
 
 static int cset(char *value_string, int roflag)
 {
@@ -509,13 +613,47 @@ static int GetStatusValue(const char *key, char *src, int src_len,char *dst,
 int DeviceIo::controlBt(BtControl cmd, void *data, int len) {
     using BtControl_rep_type = std::underlying_type<BtControl>::type;
 
+    APP_DEBUG("controlBt, cmd: %d", cmd);
+
     int ret = 0;
     switch (cmd) {
+    case BtControl::BT_IS_OPENED:
+        if(tid)
+            ret = 1;
+        break;
+
+    case BtControl::BT_OPEN:
+        if(ble_socket_thread_create() < 0)
+            ret = -1;
+        break;
+
+    case BtControl::BLE_OPEN_SERVER:
+        if(ble_wifi_introducer_server_open() < 0)
+            ret = -1;
+        break;
+
+    case BtControl::BLE_CLOSE_SERVER:
+        if(ble_wifi_introducer_server_close() < 0)
+            ret = -1;
+        break;
+
+    case BtControl::BT_CLOSE:
+        ble_socket_thread_delete();
+        break;
+
     case BtControl::GET_WIFI_BSSID:
         if (GetStatusValue("bssid=", wpa_status, wpa_status_len, (char*)data,
                            len) <= 0)
             ret = -1;
         break;
+
+    case BtControl::BLE_SERVER_SEND:
+        if(ble_socket_send(data, len) < 0) {
+            APP_ERROR("Ble socket send data failed\n");
+            ret = -1;
+        }
+        break;
+
     default:
         APP_DEBUG("%s, cmd <%d> is not implemented.\n", __func__,
                   static_cast<BtControl_rep_type>(cmd));

@@ -51,6 +51,7 @@ if(DUERLINK_V2)
 endif()
 
 add_subdirectory("DCSApp")
+add_subdirectory("SocketApp")
 add_subdirectory("Framework")
 add_subdirectory("appresources")
 
